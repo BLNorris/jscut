@@ -16,239 +16,282 @@
 // along with jscut.  If not, see <http://www.gnu.org/licenses/>.
 
 var Cam = new function () {
-    var Cam = this;
+   var Cam = this;
 
-    // Does the line from p1 to p2 cross outside of bounds?
-    function crosses(bounds, p1, p2) {
-        if (bounds == null)
-            return true;
-        if(p1.X == p2.X && p1.Y == p2.Y)
-            return false;
-        var clipper = new ClipperLib.Clipper();
-        clipper.AddPath([p1, p2], ClipperLib.PolyType.ptSubject, false);
-        clipper.AddPaths(bounds, ClipperLib.PolyType.ptClip, true);
-        var result = new ClipperLib.PolyTree();
-        clipper.Execute(ClipperLib.ClipType.ctIntersection, result, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
-        if (result.ChildCount() == 1) {
-            var child = result.Childs()[0];
-            points = child.Contour();
-            if (points.length == 2) {
-                if (points[0].X == p1.X && points[1].X == p2.X && points[0].Y == p1.Y && points[1].Y == p2.Y)
-                    return false;
-                if (points[0].X == p2.X && points[1].X == p1.X && points[0].Y == p2.Y && points[1].Y == p1.Y)
-                    return false;
-            }
-        }
-        return true;
-    }
+   // Does the line from p1 to p2 cross outside of bounds?
+   function crosses(bounds, p1, p2) {
+       if (bounds == null)
+           return true;
+       if(p1.X == p2.X && p1.Y == p2.Y)
+           return false;
+       var clipper = new ClipperLib.Clipper();
+       clipper.AddPath([p1, p2], ClipperLib.PolyType.ptSubject, false);
+       clipper.AddPaths(bounds, ClipperLib.PolyType.ptClip, true);
+       var result = new ClipperLib.PolyTree();
+       clipper.Execute(ClipperLib.ClipType.ctIntersection, result, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftEvenOdd);
+       if (result.ChildCount() == 1) {
+           var child = result.Childs()[0];
+           points = child.Contour();
+           if (points.length == 2) {
+               if (points[0].X == p1.X && points[1].X == p2.X && points[0].Y == p1.Y && points[1].Y == p2.Y)
+                   return false;
+               if (points[0].X == p2.X && points[1].X == p1.X && points[0].Y == p2.Y && points[1].Y == p1.Y)
+                   return false;
+           }
+       }
+       return true;
+   }
 
-    // CamPath has this format: {
-    //      path:               Clipper path
-    //      safeToClose:        Is it safe to close the path without retracting?
-    // }
+   // CamPath has this format: {
+   //      path:               Clipper path
+   //      safeToClose:        Is it safe to close the path without retracting?
+   // }
 
-    // Try to merge paths. A merged path doesn't cross outside of bounds. Returns array of CamPath.
-    function mergePaths(bounds, paths) {
-        if (paths.length == 0)
-            return null;
+   // Try to merge paths. A merged path doesn't cross outside of bounds. Returns array of CamPath.
+   function mergePaths(bounds, paths) {
+       if (paths.length == 0)
+           return null;
 
-        currentPath = paths[0];
-        currentPath.push(currentPath[0]);
-        currentPoint = currentPath[currentPath.length-1];
-        paths[0] = [];
+       currentPath = paths[0];
+       currentPath.push(currentPath[0]);
+       currentPoint = currentPath[currentPath.length-1];
+       paths[0] = [];
 
-        mergedPaths = [];
-        var numLeft = paths.length - 1;
-        while (numLeft > 0) {
-            var closestPathIndex = null;
-            var closestPointIndex = null;
-            var closestPointDist = null;
-            for (var pathIndex = 0; pathIndex < paths.length; ++pathIndex) {
-                path = paths[pathIndex];
-                for (var pointIndex = 0; pointIndex < path.length; ++pointIndex) {
-                    point = path[pointIndex];
-                    dist = (currentPoint.X - point.X) * (currentPoint.X - point.X) + (currentPoint.Y - point.Y) * (currentPoint.Y - point.Y);
-                    if (closestPointDist == null || dist < closestPointDist) {
-                        closestPathIndex = pathIndex;
-                        closestPointIndex = pointIndex;
-                        closestPointDist = dist;
-                    }
-                }
-            }
+       mergedPaths = [];
+       var numLeft = paths.length - 1;
+       while (numLeft > 0) {
+           var closestPathIndex = null;
+           var closestPointIndex = null;
+           var closestPointDist = null;
+           for (var pathIndex = 0; pathIndex < paths.length; ++pathIndex) {
+               path = paths[pathIndex];
+               for (var pointIndex = 0; pointIndex < path.length; ++pointIndex) {
+                   point = path[pointIndex];
+                   dist = (currentPoint.X - point.X) * (currentPoint.X - point.X) + (currentPoint.Y - point.Y) * (currentPoint.Y - point.Y);
+                   if (closestPointDist == null || dist < closestPointDist) {
+                       closestPathIndex = pathIndex;
+                       closestPointIndex = pointIndex;
+                       closestPointDist = dist;
+                   }
+               }
+           }
 
-            path = paths[closestPathIndex];
-            paths[closestPathIndex] = [];
-            numLeft -= 1;
-            var needNew = crosses(bounds, currentPoint, path[closestPointIndex]);
-            path = path.slice(closestPointIndex, path.length).concat(path.slice(0, closestPointIndex));
-            path.push(path[0]);
-            if (needNew) {
-                mergedPaths.push(currentPath);
-                currentPath = path;
-                currentPoint = currentPath[currentPath.length - 1];
-            }
-            else {
-                currentPath = currentPath.concat(path);
-                currentPoint = currentPath[currentPath.length - 1];
-            }
-        }
-        mergedPaths.push(currentPath);
+           path = paths[closestPathIndex];
+           paths[closestPathIndex] = [];
+           numLeft -= 1;
+           var needNew = crosses(bounds, currentPoint, path[closestPointIndex]);
+           path = path.slice(closestPointIndex, path.length).concat(path.slice(0, closestPointIndex));
+           path.push(path[0]);
+           if (needNew) {
+               mergedPaths.push(currentPath);
+               currentPath = path;
+               currentPoint = currentPath[currentPath.length - 1];
+           }
+           else {
+               currentPath = currentPath.concat(path);
+               currentPoint = currentPath[currentPath.length - 1];
+           }
+       }
+       mergedPaths.push(currentPath);
 
-        camPaths = [];
-        for(var i = 0; i < mergedPaths.length; ++i) {
-            var path = mergedPaths[i];
-            camPaths.push({
-                path: path,
-                safeToClose: !crosses(bounds, path[0], path[path.length-1])});
-        }
+       camPaths = [];
+       for(var i = 0; i < mergedPaths.length; ++i) {
+           var path = mergedPaths[i];
+           camPaths.push({
+               path: path,
+               safeToClose: !crosses(bounds, path[0], path[path.length-1])});
+       }
 
-        return camPaths;
-    }
+       return camPaths;
+   }
 
-    // Compute paths for pocket operation on Clipper geometry. Returns array
-    // of CamPath. cutterDia is in Clipper units. overlap is in the range [0, 1).
-    Cam.pocket = function (geometry, cutterDia, overlap, climb) {
-        var current = Path.offset(geometry, -cutterDia / 2);
-        var bounds = current.slice(0);
-        var allPaths = [];
-        while (current.length != 0) {
-            if (climb)
-                for (var i = 0; i < current.length; ++i)
-                    current[i].reverse();
-            allPaths = current.concat(allPaths);
-            current = Path.offset(current, -cutterDia * (1 - overlap));
-        }
-        return mergePaths(bounds, allPaths);
-    };
+   // Compute paths for pocket operation on Clipper geometry. Returns array
+   // of CamPath. cutterDia is in Clipper units. overlap is in the range [0, 1).
+   Cam.pocket = function (geometry, cutterDia, overlap, climb) {
+       var current = Path.offset(geometry, -cutterDia / 2);
+       var bounds = current.slice(0);
+       var allPaths = [];
+       while (current.length != 0) {
+           if (climb)
+               for (var i = 0; i < current.length; ++i)
+                   current[i].reverse();
+           allPaths = current.concat(allPaths);
+           current = Path.offset(current, -cutterDia * (1 - overlap));
+       }
+       return mergePaths(bounds, allPaths);
+   };
 
-    // Compute paths for outline operation on Clipper geometry. Returns array
-    // of CamPath. cutterDia and width are in Clipper units. overlap is in the 
-    // range [0, 1).
-    Cam.outline = function (geometry, cutterDia, width, overlap, climb) {
-        var current = Path.offset(geometry, cutterDia / 2);
-        var currentWidth = cutterDia;
-        var bounds = Path.diff(Path.offset(geometry, width - cutterDia / 2), current);
-        var allPaths = [];
-        var eachOffset = cutterDia * (1 - overlap);
-        while (currentWidth <= width) {
-            if (!climb)
-                for (var i = 0; i < current.length; ++i)
-                    current[i].reverse();
-            allPaths = current.concat(allPaths);
-            var nextWidth = currentWidth + eachOffset;
-            if (nextWidth > width && width - currentWidth > 0) {
-                current = Path.offset(current, width - currentWidth);
-                if (!climb)
-                    for (var i = 0; i < current.length; ++i)
-                        current[i].reverse();
-                allPaths = current.concat(allPaths);
-                break;
-            }
-            currentWidth = nextWidth;
-            current = Path.offset(current, eachOffset);
-        }
-        return mergePaths(bounds, allPaths);
-    };
+   // Compute paths for outline operation on Clipper geometry. Returns array
+   // of CamPath. cutterDia and width are in Clipper units. overlap is in the 
+   // range [0, 1).
+   Cam.outline = function (geometry, cutterDia, width, overlap, climb) {
+       var current = Path.offset(geometry, cutterDia / 2);
+       var currentWidth = cutterDia;
+       var bounds = Path.diff(Path.offset(geometry, width - cutterDia / 2), current);
+       var allPaths = [];
+       var eachOffset = cutterDia * (1 - overlap);
+       while (currentWidth <= width) {
+           if (!climb)
+               for (var i = 0; i < current.length; ++i)
+                   current[i].reverse();
+           allPaths = current.concat(allPaths);
+           var nextWidth = currentWidth + eachOffset;
+           if (nextWidth > width && width - currentWidth > 0) {
+               current = Path.offset(current, width - currentWidth);
+               if (!climb)
+                   for (var i = 0; i < current.length; ++i)
+                       current[i].reverse();
+               allPaths = current.concat(allPaths);
+               break;
+           }
+           currentWidth = nextWidth;
+           current = Path.offset(current, eachOffset);
+       }
+       return mergePaths(bounds, allPaths);
+   };
 
-    // Compute paths for engrave operation on Clipper geometry. Returns array
-    // of CamPath.
-    Cam.engrave = function (geometry, climb) {
-        var allPaths = [];
-        for (var i = 0; i < geometry.length; ++i) {
-            var path = geometry[i].slice(0);
-            if (!climb)
-                path.reverse();
-            path.push(path[0]);
-            allPaths.push(path);
-        }
-        result = mergePaths(null, allPaths);
-        for (var i = 0; i < result.length; ++i)
-            result[i].safeToClose = true;
-        return result;
-    };
+   // Compute paths for engrave operation on Clipper geometry. Returns array
+   // of CamPath.
+   Cam.engrave = function (geometry, climb) {
+       var allPaths = [];
+       for (var i = 0; i < geometry.length; ++i) {
+           var path = geometry[i].slice(0);
+           if (!climb)
+               path.reverse();
+           path.push(path[0]);
+           allPaths.push(path);
+       }
+       result = mergePaths(null, allPaths);
+       for (var i = 0; i < result.length; ++i)
+           result[i].safeToClose = true;
+       return result;
+   };
 
-    // Convert array of CamPath to array of Clipper path
-    Cam.getClipperPathsFromCamPaths = function (paths) {
-        result = [];
-        if (paths != null)
-            for (var i = 0; i < paths.length; ++i)
-                result.push(paths[i].path);
-        return result;
-    }
+   // Convert array of CamPath to array of Clipper path
+   Cam.getClipperPathsFromCamPaths = function (paths) {
+       result = [];
+       if (paths != null)
+           for (var i = 0; i < paths.length; ++i)
+               result.push(paths[i].path);
+       return result;
+   }
 
-    // Convert paths to gcode. getGcode() assumes that the current Z position is at safeZ.
-    // getGcode()'s gcode returns Z to this position at the end.
-    // namedArgs must have:
-    //      paths:          Array of CamPath
-    //      scale:          Factor to convert Clipper units to gcode units
-    //      offsetX:        Offset X (gcode units)
-    //      offsetY:        Offset Y (gcode units)
-    //      decimal:        Number of decimal places to keep in gcode
-    //      topZ:           Top of area to cut (gcode units)
-    //      botZ:           Bottom of area to cut (gcode units)
-    //      safeZ:          Z position to safely move over uncut areas (gcode units)
-    //      passDepth:      Cut depth for each pass (gcode units)
-    //      plungeFeed:     Feedrate to plunge cutter (gcode units)
-    //      retractFeed:    Feedrate to retract cutter (gcode units)
-    //      cutFeed:        Feedrate for horizontal cuts (gcode units)
-    //      rapidFeed:      Feedrate for rapid moves (gcode units)
-    Cam.getGcode = function (namedArgs) {
-        var paths = namedArgs.paths;
-        var scale = namedArgs.scale;
-        var offsetX = namedArgs.offsetX;
-        var offsetY = namedArgs.offsetY;
-        var decimal = namedArgs.decimal;
-        var topZ = namedArgs.topZ;
-        var botZ = namedArgs.botZ;
-        var safeZ = namedArgs.safeZ;
-        var passDepth = namedArgs.passDepth;
-        var plungeFeedGcode = ' F' + namedArgs.plungeFeed;
-        var retractFeedGcode = ' F' + namedArgs.retractFeed;
-        var cutFeedGcode = ' F' + namedArgs.cutFeed;
-        var rapidFeedGcode = ' F' + namedArgs.rapidFeed;
-        var gcode = "";
+   // Convert paths to gcode. getGcode() assumes that the current Z position is at safeZ.
+   // getGcode()'s gcode returns Z to this position at the end.
+   // namedArgs must have:
+   //      paths:          Array of CamPath
+   //      scale:          Factor to convert Clipper units to gcode units
+   //      offsetX:        Offset X (gcode units)
+   //      offsetY:        Offset Y (gcode units)
+   //      decimal:        Number of decimal places to keep in gcode
+   //      topZ:           Top of area to cut (gcode units)
+   //      botZ:           Bottom of area to cut (gcode units)
+   //      safeZ:          Z position to safely move over uncut areas (gcode units)
+   //      passDepth:      Cut depth for each pass (gcode units)
+   //      plungeFeed:     Feedrate to plunge cutter (gcode units)
+   //      retractFeed:    Feedrate to retract cutter (gcode units)
+   //      cutFeed:        Feedrate for horizontal cuts (gcode units)
+   //      rapidFeed:      Feedrate for rapid moves (gcode units)
+   Cam.getGcode = function (namedArgs) {
+       var paths = namedArgs.paths;
+       var scale = namedArgs.scale;
+       var offsetX = namedArgs.offsetX;
+       var offsetY = namedArgs.offsetY;
+       var decimal = namedArgs.decimal;
+       var topZ = namedArgs.topZ;
+       var botZ = namedArgs.botZ;
+       var safeZ = namedArgs.safeZ;
+       var passDepth = namedArgs.passDepth;
+       var plungeFeedGcode = ' F' + namedArgs.plungeFeed;
+       var retractFeedGcode = ' F' + namedArgs.retractFeed;
+       var cutFeedGcode = ' F' + namedArgs.cutFeed;
+       var rapidFeedGcode = ' F' + namedArgs.rapidFeed;
+       var gcode = "";
 
-        var retractGcode =
-            '; Retract\r\n' +
-            'G1 Z' + safeZ.toFixed(decimal) + rapidFeedGcode + '\r\n';
+       var retractGcode =
+           '; Retract\r\n' +
+           'G1 Z' + safeZ.toFixed(decimal) + rapidFeedGcode + '\r\n';
 
-        function convertPoint(p) {
-            return " X" + (p.X * scale + offsetX).toFixed(decimal) + ' Y' + (-p.Y * scale + offsetY).toFixed(decimal);
-        }
+       function getX(p) {
+           return p.X * scale + offsetX;
+       }
 
-        for (var pathIndex = 0; pathIndex < paths.length; ++pathIndex) {
-            var path = paths[pathIndex];
-            if (path.path.length == 0)
-                continue;
-            gcode +=
-                '\r\n'+
-                '; Path ' + pathIndex + '\r\n';
-            var currentZ = topZ;
-            while (currentZ > botZ) {
-                if (currentZ != topZ && !path.safeToClose)
-                    gcode += retractGcode;
-                gcode +=
-                    '; Rapid to initial position\r\n' +
-                    'G1' + convertPoint(path.path[0]) + rapidFeedGcode + '\r\n' +
-                    'G1 Z' + currentZ.toFixed(decimal) + '\r\n';
-                currentZ -= passDepth;
-                if (currentZ < botZ)
-                    currentZ = botZ;
-                gcode +=
-                    '; plunge\r\n' +
-                    'G1 Z' + currentZ.toFixed(decimal) + plungeFeedGcode + '\r\n' +
-                    '; cut\r\n';
-                for (var i = 1; i < path.path.length; ++i) {
-                    gcode += 'G1' + convertPoint(path.path[i]);
-                    if (i == 1)
-                        gcode += cutFeedGcode + '\r\n';
-                    else
-                        gcode += '\r\n';
-                }
-            }
-            gcode += retractGcode;
-        }
+       function getY(p) {
+           return -p.Y * scale + offsetY;
+       }
 
-        return gcode;
-    };
+       function dist(x1, y1, x2, y2) {
+           return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+       }
+
+       function convertPoint(p) {
+           return " X" + (p.X * scale + offsetX).toFixed(decimal) + ' Y' + (-p.Y * scale + offsetY).toFixed(decimal);
+       }
+
+       for (var pathIndex = 0; pathIndex < paths.length; ++pathIndex) {
+           var path = paths[pathIndex];
+           if (path.path.length == 0)
+               continue;
+           gcode +=
+               '\r\n'+
+               '; Path ' + pathIndex + '\r\n';
+           var currentZ = topZ;
+           while (currentZ > botZ) {
+               if (currentZ != topZ && !path.safeToClose)
+                   gcode += retractGcode;
+               gcode +=
+                   '; Rapid to initial position\r\n' +
+                   'G1' + convertPoint(path.path[0]) + rapidFeedGcode + '\r\n' +
+                   'G1 Z' + currentZ.toFixed(decimal) + '\r\n';
+               var nextZ = Math.max(currentZ - passDepth, botZ);
+
+               var executedRamp = false;
+               if (true) { // TODO: make this configurable per op
+                   var minPlungeTime = (currentZ - nextZ) / namedArgs.plungeFeed;
+                   var idealDist = namedArgs.cutFeed * minPlungeTime;
+                   var end;
+                   var totalDist = 0;
+                   for (end = 1; end < path.path.length; ++end) {
+                       if (totalDist > idealDist)
+                           break;
+                       totalDist += 2 * dist(getX(path.path[end - 1]), getY(path.path[end - 1]), getX(path.path[end]), getY(path.path[end]));
+                   }
+                   if (totalDist > 0) {
+                       gcode += '; ramp\r\n'
+                       executedRamp = true;
+                       var rampPath = path.path.slice(0, end).concat(path.path.slice(0, end - 1).reverse());
+                       var distTravelled = 0;
+                       for (var i = 1; i < rampPath.length; ++i) {
+                           distTravelled += dist(getX(rampPath[i - 1]), getY(rampPath[i - 1]), getX(rampPath[i]), getY(rampPath[i]));
+                           var newZ = currentZ + distTravelled / totalDist * (nextZ - currentZ);
+                           gcode += 'G1' + convertPoint(rampPath[i]) + ' Z' + newZ.toFixed(decimal);
+                           if (i == 1)
+                               gcode += ' F' + Math.min(totalDist / minPlungeTime, namedArgs.cutFeed).toFixed(decimal) + '\r\n';
+                           else
+                               gcode += '\r\n';
+                       }
+                   }
+               }
+
+               if (!executedRamp)
+                   gcode +=
+                       '; plunge\r\n' +
+                       'G1 Z' + nextZ.toFixed(decimal) + plungeFeedGcode + '\r\n';
+
+               currentZ = nextZ;
+               gcode += '; cut\r\n';
+
+               for (var i = 1; i < path.path.length; ++i) {
+                   gcode += 'G1' + convertPoint(path.path[i]);
+                   if (i == 1)
+                       gcode += cutFeedGcode + '\r\n';
+                   else
+                       gcode += '\r\n';
+               }
+           }
+           gcode += retractGcode;
+       }
+
+       return gcode;
+   };
 };
