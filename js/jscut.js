@@ -134,6 +134,7 @@ gcodeConversionViewModel = new GcodeConversionViewModel(options, miscViewModel, 
 
 ko.applyBindings(materialViewModel, $("#Material")[0]);
 ko.applyBindings(selectionViewModel, $("#CurveToLine")[0]);
+ko.applyBindings(selectionViewModel, $("#Selector")[0]);
 ko.applyBindings(toolModel, $("#Tool")[0]);
 ko.applyBindings(operationsViewModel, $("#Operations")[0]);
 ko.applyBindings(tabsViewModel, $("#Tabs")[0]);
@@ -229,6 +230,9 @@ tutorial(1, 'Open an SVG file.');
 function loadSvg(alert, filename, content) {
     svg = Snap.parse(content);
     contentGroup.append(svg);
+    contentGroup.selectAll("path").forEach( function (element) {
+        element.attr("class", "original");
+    });
     updateSvgSize();
     if(alert)
         alert.remove();

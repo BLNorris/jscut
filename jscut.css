@@ -31,9 +31,15 @@ code {
     width: 60px;
 }
 
-.selectedPath {
+.closedPath {
     stroke:none;
     fill:#0080ff;
+}
+
+.openPath {
+    stroke:#0080ff;
+    stroke-width:4px;
+    fill: none;
 }
 
 .combinedGeometry {

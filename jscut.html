@@ -200,6 +200,23 @@ along with jscut.  If not, see <http://www.gnu.org/licenses/>.
         <div class="row">
             <!-- left -->
             <div class="col-sm-3 left-column">
+                <!-- Quick select -->
+                <div class="panel panel-default" id="Selector">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <a data-toggle="collapse" data-parent="#accordion" href="#collapseSelector">Quick Selection</a>
+                        </h3>
+                    </div>
+                    <div id="collapseSelector" class="panel-collapse collapse in">
+                        <div class="panel-body">
+                            <div style="display: inline-block">
+                                <button id="SelectOpenPathsButton" class="btn btn-default" data-bind="click: selectPaths.bind($data, false)">Select Open Paths</button>
+                                <button id="SelectFilledPathsButton" class="btn btn-default" data-bind="click: selectPaths.bind($data, true)">Select Filled Paths</button>
+                                <button id="ClearPathsButton" class="btn btn-default" data-bind="click: clearSelection">Clear All Paths</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- operations -->
                 <div class="panel panel-default" id="Operations">
                     <div class="panel-heading">

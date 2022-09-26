@@ -26,27 +26,51 @@ function SelectionViewModel(svgViewModel, materialViewModel, selectionGroup) {
     materialViewModel.unitConverter.add(self.selMinSegmentLength);
 
     self.clickOnSvg = function (elem) {
-        if (elem.attr("class") == "selectedPath") {
+        if (elem.attr("class") == "openPath" || elem.attr("class") == "closedPath") {
             elem.remove();
             self.selNumSelected(self.selNumSelected() - 1);
             return true;
         }
-
         var path = jscut.priv.path.getLinearSnapPathFromElement(elem, self.selMinNumSegments(), self.selMinSegmentLength.toInch() * svgViewModel.pxPerInch(), function (msg) {
             showAlert(msg, "alert-warning");
         });
 
         if (path != null) {
             var newPath = selectionGroup.path(path);
-            newPath.attr("class", "selectedPath");
+
+            if (elem.attr("fill") == "none") {
+                newPath.attr("class", "openPath");
+            } else {
+                newPath.attr("class", "closedPath");
+            }
             if (elem.attr("fill-rule") == "evenodd")
                 newPath.attr("fill-rule", "evenodd");
             self.selNumSelected(self.selNumSelected() + 1);
         }
-
+        
         return true;
     }
 
+    self.selectPaths = function(filled) {
+        
+        // Clear selection
+        self.selNumSelected(0);
+        self.getSelection().forEach( function(element) {
+            element.remove();
+        });
+        
+        // Select paths
+        var mainSvg = Snap("#MainSvg");
+        mainSvg.selectAll("path").forEach( function (element) {
+            if (element.attr("class") != "original") return;
+            if (element.attr("fill") == "none") {
+                if (!filled) self.clickOnSvg(element);
+            } else {
+                if (filled) self.clickOnSvg(element);
+            }
+        });
+    }
+    
     self.getSelection = function () {
         return selectionGroup.selectAll("path");
     }
